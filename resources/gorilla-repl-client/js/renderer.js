@@ -61,26 +61,22 @@ var renderListLike = function (data, callbackQueue, errorCallback) {
 
 var renderVega = function (data, callbackQueue, errorCallback) {
 
-    var uuid = UUID.generate();
-
-    // for some reason, Vega will sometimes try and pop up an alert if there's an error, which is not a
-    // great user experience. Here we patch the error handling function to re-route any generated message
-    // to the segment.
-    vg.error = function (msg) {
-        errorCallback("Vega error (js): " + msg);
-    };
+    var uuid = 'vega' + UUID.generate().substr(0, 8);
 
     callbackQueue.push(function () {
-        vg.parse.spec(data.content, function (chart) {
-            try {
-                var element = $("#" + uuid).get()[0];
-                chart({el: element, renderer: 'svg'}).update();
-            } catch (e) {
+        try {
+            var view = new vega.View(vega.parse(data.content))
+                .initialize()
+                .toSVG()
+                .then(function(svg) {
+                    document.getElementById(uuid).innerHTML = svg;
+                });
+        } catch (e) {
+                console.log(e);
                 // we'll end up here if vega throws an error. We try and route this error back to the
                 // segment so the user has an idea of what's going on.
                 errorCallback("Vega error (js): " + e.message);
-            }
-        });
+        }
     });
 
     return wrapWithValue(data, "<span class='vega-span' id='" + uuid + "'></span>");
